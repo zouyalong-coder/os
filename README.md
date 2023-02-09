@@ -1,5 +1,7 @@
 # os
 
+参考：【【系统内核】Udemy 高分付费课程，从头开始开发一个多线程系统内核，双语字幕】https://www.bilibili.com/video/BV1Sx4y137JF?p=15&vd_source=f696611a731053452d16c5cafd7ee1e5
+
 ## 环境准备
 ```bash
 # 安装模拟器
