@@ -8,6 +8,7 @@
 #![reexport_test_harness_main = "test_main"] // 重新导出测试框架的入口
 
 mod qemu;
+mod serial;
 mod vga_buffer;
 
 use core::panic::PanicInfo;
@@ -46,15 +47,24 @@ pub extern "C" fn _start() -> ! {
 
 /// 这个函数将在 panic 时被调用
 #[panic_handler]
-// #[cfg(not(test))]
+#[cfg(not(test))]
 fn panic(info: &PanicInfo) -> ! {
-    println!("{}", info);
+    println!("panic: {}", info);
+    loop {}
+}
+
+#[cfg(test)]
+#[panic_handler]
+fn panic(info: &PanicInfo) -> ! {
+    serial_println!("[failed]\n");
+    serial_println!("Error: {}\n", info);
+    qemu::exit_qemu(qemu::QemuExitCode::Failed);
     loop {}
 }
 
 #[cfg(test)]
 fn test_runner(tests: &[&dyn Fn()]) {
-    println!("Running {} tests", tests.len());
+    serial_println!("Running {} tests", tests.len());
     for test in tests {
         test();
     }
@@ -63,7 +73,7 @@ fn test_runner(tests: &[&dyn Fn()]) {
 
 #[test_case]
 fn trivial_assertion() {
-    print!("trivial assertion... ");
-    assert_eq!(1, 1);
-    println!("[ok]");
+    serial_println!("trivial assertion... ");
+    assert_eq!(1, 0);
+    serial_println!("[ok]");
 }
