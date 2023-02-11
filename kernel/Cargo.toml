@@ -17,7 +17,9 @@ panic = "abort"
 # 设备 isa-debug-exit 采用 IO 端口映射方式访问（in&out 指令）， 其 I/O 端口地址为 0xf4，大小为 0x04 字节。
 # isa-debug-exit 设备的功能非常简单。当一个 value 写入 iobase 指定的端口时，它会导致QEMU以退出状态（exit status）(value << 1) | 1 退出。也就是说，当我们向端口写入 0 时，QEMU将以退出状态 (0 << 1) | 1 = 1 退出，而当我们向端口写入1时，它将以退出状态 (1 << 1) | 1 = 3 退出。
 test-args = ["-device", "isa-debug-exit,iobase=0xf4,iosize=0x04",
-    "-serial", "stdio"]
+    "-serial", "stdio",
+    "-display", "none", # 禁用图形界面
+    ]
 test-success-exit-code = 33 # 由于我们指定了退出码为 33，所有非0的退出码都会被视为测试失败，所以需要再这里指定成功的退出码。
 
 [dependencies]

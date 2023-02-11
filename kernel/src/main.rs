@@ -74,6 +74,17 @@ fn test_runner(tests: &[&dyn Fn()]) {
 #[test_case]
 fn trivial_assertion() {
     serial_println!("trivial assertion... ");
-    assert_eq!(1, 0);
+    assert_eq!(1, 1);
     serial_println!("[ok]");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::serial_println;
+
+    #[test_case]
+    fn it_works() {
+        serial_println!("it works... ");
+        assert_eq!(2 + 2, 4);
+    }
 }
