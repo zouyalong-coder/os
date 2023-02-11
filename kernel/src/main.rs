@@ -10,39 +10,40 @@
 use core::panic::PanicInfo;
 use kernel::println;
 
-#[cfg(test)]
 #[no_mangle] // 不重整函数名
 pub extern "C" fn _start() -> ! {
     // 因为编译器会寻找一个名为 `_start` 的函数，所以这个函数就是入口点
     // 默认命名为 `_start`
-    println!("Hello World{}", "!");
+    #[cfg(test)]
+    test_start();
+    #[cfg(not(test))]
+    run_start();
+
+    loop {}
+}
+
+#[allow(unused)]
+#[cfg(test)]
+fn test_start() {
     test_main();
-
-    loop {}
 }
 
-#[cfg(not(test))]
-#[no_mangle] // 不重整函数名
-pub extern "C" fn _start() -> ! {
-    // 因为编译器会寻找一个名为 `_start` 的函数，所以这个函数就是入口点
-    // 默认命名为 `_start`
-    println!("Hello World{}", "!");
-
-    loop {}
+#[allow(unused)]
+fn run_start() {
+    kernel::init();
+    x86_64::instructions::interrupts::int3(); // new
+    println!("here");
 }
 
-/// 这个函数将在 panic 时被调用
-#[panic_handler]
-#[cfg(not(test))]
-fn panic(info: &PanicInfo) -> ! {
-    println!("panic: {}", info);
-    loop {}
-}
-
-#[cfg(test)]
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
-    kernel::test_panic_handler(info)
+    #[cfg(test)]
+    kernel::test_panic_handler(info);
+    #[cfg(not(test))]
+    {
+        println!("panic: {}", info);
+        loop {}
+    }
 }
 
 #[test_case]

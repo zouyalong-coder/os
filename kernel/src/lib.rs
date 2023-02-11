@@ -5,8 +5,11 @@
 #![test_runner(crate::test_runner)] // 指定测试框架
 // 测试函数生成的 main 函数改为 test_main
 #![reexport_test_harness_main = "test_main"] // 测试框架入口设置为 test_main
+#![feature(abi_x86_interrupt)] // 开启 x86 中断
 
 use core::panic::PanicInfo;
+
+pub mod interrupts;
 
 pub mod qemu;
 pub mod serial;
@@ -16,6 +19,7 @@ pub mod vga_buffer;
 #[cfg(test)]
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
+    init();
     test_main();
     loop {}
 }
@@ -56,3 +60,17 @@ pub fn test_runner(tests: &[&dyn Testable]) {
     }
     qemu::exit_qemu(qemu::QemuExitCode::Success);
 }
+
+/// 初始化内核。
+pub fn init() {
+    interrupts::init_idt();
+}
+
+// #[cfg(test)]
+// mod tests {
+#[test_case]
+fn test_breakpoint_exception() {
+    // invoke a breakpoint exception
+    x86_64::instructions::interrupts::int3();
+}
+// }
