@@ -11,6 +11,12 @@ panic = "abort"
 [profile.release]
 panic = "abort"
 
+# 无约束测试
+# 为测试禁用 harness flag，这个标志（flag）定义了是否将test runner用于集成测试中。
+[[test]]
+name = "should_panic"
+harness = false
+
 # bootimage runner 会在QEMU的默认测试命令后添加 test-args 参数。（对于 cargo run 命令，这个参数会被忽略。）
 #在传递设备名 (isa-debug-exit)的同时，我们还传递了两个参数，iobase 和 iosize 。这两个参数指定了一个_I/O 端口_，我们的内核将通过它来访问设备。
 [package.metadata.bootimage]
