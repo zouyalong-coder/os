@@ -127,7 +127,7 @@ impl fmt::Write for Writer {
 }
 
 lazy_static::lazy_static! {
-    // 0xb8000 是 VGA 文本缓冲区的起始地址
+    // 0xb8000 是 VGA 文本缓冲区的起始地址，使用内存映射的方式。
     // 此时没有 Mutex，使用 spin Mutex 代替。spin Mutex 与 std Mutex 的区别在于，spin Mutex 不会阻塞线程，而是在等待锁的时候一直循环检查锁是否可用
     pub static ref WRITER: spin::Mutex<Writer> = spin::Mutex::new(Writer {
         column_position: 0,

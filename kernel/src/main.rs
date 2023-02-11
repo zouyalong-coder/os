@@ -1,6 +1,13 @@
 #![no_std] // 不链接 Rust 标准库
-#![no_main] // 禁用所有 Rust 层级的入口点
+#![no_main]
+// 禁用所有 Rust 层级的入口点
+// 自定义测试框架会生成 main 函数用于测试，但由于我们使用了 no_main，是入口变成了 _start
+#![feature(custom_test_frameworks)] // no_std 禁用了默认的测试框架，需要自定义
+#![test_runner(crate::test_runner)] // 指定测试框架的入口
+// 使得测试生成的 main 函数改为 test_main
+#![reexport_test_harness_main = "test_main"] // 重新导出测试框架的入口
 
+mod qemu;
 mod vga_buffer;
 
 use core::panic::PanicInfo;
@@ -31,16 +38,32 @@ pub extern "C" fn _start() -> ! {
         );
     }
 
-    println!("hello world from println {}...", 1);
-    panic!("lalala");
+    #[cfg(test)]
+    test_main();
 
     loop {}
 }
 
 /// 这个函数将在 panic 时被调用
 #[panic_handler]
-#[cfg(not(test))]
+// #[cfg(not(test))]
 fn panic(info: &PanicInfo) -> ! {
     println!("{}", info);
     loop {}
+}
+
+#[cfg(test)]
+fn test_runner(tests: &[&dyn Fn()]) {
+    println!("Running {} tests", tests.len());
+    for test in tests {
+        test();
+    }
+    qemu::exit_qemu(qemu::QemuExitCode::Success);
+}
+
+#[test_case]
+fn trivial_assertion() {
+    print!("trivial assertion... ");
+    assert_eq!(1, 1);
+    println!("[ok]");
 }
