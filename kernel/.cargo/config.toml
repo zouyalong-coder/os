@@ -1,0 +1,16 @@
+# 仅仅在 unstable 环境下调用
+[unstable]
+# 重新编译 core 和 compiler_builtins 这两个crate
+# 编译需要提供源码，使用 rustup component add rust-src 来下载
+build-std = ["core", "compiler_builtins"]
+# 为 compiler_builtins 启用了 mem 特性
+build-std-features = ["compiler-builtins-mem"]
+
+[build]
+# 避免每次传入 --target 参数
+target = "targets/x86_64-myos.json"
+
+# 更方便在 QEMU 中运行, target_os=none 包含 myos
+[target.'cfg(target_os = "none")']
+# 这个配置可以使我们用 cargo run 来运行
+runner = "bootimage runner"
