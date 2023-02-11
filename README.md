@@ -8,6 +8,9 @@
 brew install qemu
 # 安装x86汇编编译器
 brew install nasm
+
+# 安装 bootimage 工具，此工具负责生成bootloader 并打包成系统镜像。
+cargo install bootimage
 ```
 
 ## 编译
