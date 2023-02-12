@@ -11,6 +11,7 @@ use core::panic::PanicInfo;
 
 pub mod interrupts;
 
+pub mod gdt;
 pub mod qemu;
 pub mod serial;
 pub mod vga_buffer;
@@ -63,6 +64,7 @@ pub fn test_runner(tests: &[&dyn Testable]) {
 
 /// 初始化内核。
 pub fn init() {
+    gdt::init();
     interrupts::init_idt();
 }
 

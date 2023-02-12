@@ -17,11 +17,15 @@ lazy_static! {
     static ref IDT: InterruptDescriptorTable = {
         let mut idt = InterruptDescriptorTable::new();
         idt.breakpoint.set_handler_fn(breakpoint_handler);
+        unsafe {
+        idt.double_fault.set_handler_fn(double_fault_handler)
+            .set_stack_index(gdt::DOUBLE_FAULT_IST_INDEX);
+        }
         idt
     };
 }
 
-use crate::println;
+use crate::{gdt, println};
 use lazy_static::lazy_static;
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame};
 
@@ -36,4 +40,17 @@ pub fn init_idt() {
 /// breakpoint exception 通常被用在调试器中：当程序员为程序打上断点，调试器会将对应的位置覆写为 int3 指令，CPU执行该指令后，就会抛出 breakpoint exception 异常。在调试完毕，需要程序继续运行时，调试器就会将原指令覆写回 int3 的位置。
 extern "x86-interrupt" fn breakpoint_handler(stack_frame: InterruptStackFrame) {
     println!("EXCEPTION: BREAKPOINT\n{:#?}", stack_frame);
+}
+
+/// double fault 就是当CPU执行错误处理函数失败时抛出的特殊异常。如果 double fault 异常没有被正确处理，CPU 会抛出 triple fault 异常，这是一个不能被处理的异常，会导致系统重启。
+extern "x86-interrupt" fn double_fault_handler(
+    stack_frame: InterruptStackFrame,
+    _error_code: u64,
+) -> ! {
+    panic!(
+        "EXCEPTION: DOUBLE FAULT
+
+{:#?}",
+        stack_frame
+    );
 }
