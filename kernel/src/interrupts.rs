@@ -27,6 +27,8 @@ lazy_static! {
 
 use crate::{gdt, println};
 use lazy_static::lazy_static;
+use pic8259::ChainedPics;
+use spin::Mutex;
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame};
 
 /// 初始化中断描述符表
@@ -54,3 +56,30 @@ extern "x86-interrupt" fn double_fault_handler(
         stack_frame
     );
 }
+
+///                      ____________             _____
+/// Timer ------------> |            |           |     |
+/// Keyboard ---------> | Interrupt  |---------> | CPU |
+/// Other Hardware ---> | Controller |           |_____|
+/// Etc. -------------> |____________|
+/// 可编程中断控制器：CPU 已定义的异常数量为 32 个，这里为了避开，从 32 开始定义中断。
+///                      ____________                          ____________
+/// Real Time Clock --> |            |   Timer -------------> |            |
+/// ACPI -------------> |            |   Keyboard-----------> |            |      _____
+/// Available --------> | Secondary  |----------------------> | Primary    |     |     |
+/// Available --------> | Interrupt  |   Serial Port 2 -----> | Interrupt  |---> | CPU |
+/// Mouse ------------> | Controller |   Serial Port 1 -----> | Controller |     |_____|
+/// Co-Processor -----> |            |   Parallel Port 2/3 -> |            |
+/// Primary ATA ------> |            |   Floppy disk -------> |            |
+/// Secondary ATA ----> |____________|   Parallel Port 1----> |____________|
+/// PIC 有两个，分别是主片和从片，主片负责中断 0-7，从片负责中断 8-15。
+/// 主控制器的端口地址为：指令 0x20，数据 0x21。
+/// 从控制器的端口地址为：指令 0xA0，数据 0xA1。
+/// Offset 为中断偏移量，即中断号。
+pub const PIC_1_OFFSET: u8 = 32;
+/// 从片的中断偏移量。
+pub const PIC_2_OFFSET: u8 = PIC_1_OFFSET + 8;
+
+// 这里设置的是主片和从片的 base 中断偏移量。
+pub static PICS: Mutex<ChainedPics> =
+    Mutex::new(unsafe { ChainedPics::new(PIC_1_OFFSET, PIC_2_OFFSET) });

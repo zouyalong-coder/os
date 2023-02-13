@@ -66,6 +66,12 @@ pub fn test_runner(tests: &[&dyn Testable]) {
 pub fn init() {
     gdt::init();
     interrupts::init_idt();
+    unsafe {
+        // todo 了解PIC初始化过程
+        interrupts::PICS.lock().initialize();
+    }
+    // 启动中断。
+    x86_64::instructions::interrupts::enable();
 }
 
 // #[cfg(test)]
