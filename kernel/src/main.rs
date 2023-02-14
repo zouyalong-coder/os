@@ -8,7 +8,7 @@
 #![reexport_test_harness_main = "test_main"] // 重新导出测试框架的入口
 
 use core::panic::PanicInfo;
-use kernel::println;
+use kernel::{print, println};
 
 #[no_mangle] // 不重整函数名
 pub extern "C" fn _start() -> ! {
@@ -39,6 +39,9 @@ fn run_start() {
 
     // 触发 stack overflow
     // stack_overflow();
+    loop {
+        print!(">");
+    }
 
     println!("here");
 }
