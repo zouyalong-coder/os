@@ -21,11 +21,12 @@ lazy_static! {
         idt.double_fault.set_handler_fn(double_fault_handler)
             .set_stack_index(gdt::DOUBLE_FAULT_IST_INDEX);
         }
+        idt[InterruptIndex::Timer.as_usize()].set_handler_fn(timer_interrupt_handler);
         idt
     };
 }
 
-use crate::{gdt, println};
+use crate::{gdt, print, println};
 use lazy_static::lazy_static;
 use pic8259::ChainedPics;
 use spin::Mutex;
@@ -83,3 +84,30 @@ pub const PIC_2_OFFSET: u8 = PIC_1_OFFSET + 8;
 // 这里设置的是主片和从片的 base 中断偏移量。
 pub static PICS: Mutex<ChainedPics> =
     Mutex::new(unsafe { ChainedPics::new(PIC_1_OFFSET, PIC_2_OFFSET) });
+
+#[repr(u8)]
+pub enum InterruptIndex {
+    Timer = PIC_1_OFFSET, // Timer 在 master 的第0个引脚，所以中断号为 32
+}
+
+impl InterruptIndex {
+    pub fn as_u8(self) -> u8 {
+        self as u8
+    }
+
+    pub fn as_usize(self) -> usize {
+        usize::from(self.as_u8())
+    }
+}
+
+/// Timer 中断处理函数。
+extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFrame) {
+    print!(".");
+    unsafe {
+        // 要通知 PIC 中断已经处理完毕，否则后续中断会一直排队。
+        // notify_end_of_interrupt 会自行判断中断信号发送的源头（主PIC或者副PIC），并使用指令和数据端口将信号发送到目标控制器。当然，如果是要发送到副PIC，那么结果上必然等同于同时发送到两个PIC，因为副PIC的输入管脚连在主PIC上面。
+        // 这里的中断编码一定不可以写错，不然可能会导致某个中断信号迟迟得不到回应导致系统整体挂起。这也是该函数被标记为不安全的原因。
+        PICS.lock()
+            .notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
+    }
+}

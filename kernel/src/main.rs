@@ -31,14 +31,14 @@ fn test_start() {
 #[allow(unused)]
 fn run_start() {
     kernel::init();
-    x86_64::instructions::interrupts::int3(); // new
+    // x86_64::instructions::interrupts::int3(); // new
 
-    fn stack_overflow() {
-        stack_overflow(); // 每一次递归都会将返回地址入栈
-    }
+    // fn stack_overflow() {
+    // stack_overflow(); // 每一次递归都会将返回地址入栈
+    // }
 
     // 触发 stack overflow
-    stack_overflow();
+    // stack_overflow();
 
     println!("here");
 }
