@@ -140,7 +140,12 @@ lazy_static::lazy_static! {
 #[doc(hidden)]
 pub fn _print(args: fmt::Arguments) {
     use core::fmt::Write;
-    WRITER.lock().write_fmt(args).unwrap();
+    use x86_64::instructions::interrupts;
+
+    // 闭包执行期间禁用中断，防止死锁
+    interrupts::without_interrupts(|| {
+        WRITER.lock().write_fmt(args).unwrap();
+    });
 }
 
 #[macro_export] // 使得 print! 和 println! 宏可以在其他模块中使用
