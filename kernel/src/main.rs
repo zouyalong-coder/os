@@ -19,7 +19,7 @@ pub extern "C" fn _start() -> ! {
     #[cfg(not(test))]
     run_start();
 
-    loop {}
+    kernel::hlt_loop()
 }
 
 #[allow(unused)]
@@ -53,7 +53,7 @@ fn panic(info: &PanicInfo) -> ! {
     #[cfg(not(test))]
     {
         println!("panic: {}", info);
-        loop {}
+        kernel::hlt_loop()
     }
 }
 
