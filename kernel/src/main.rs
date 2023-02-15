@@ -39,9 +39,6 @@ fn run_start() {
 
     // 触发 stack overflow
     // stack_overflow();
-    loop {
-        print!(">");
-    }
 
     println!("here");
 }
