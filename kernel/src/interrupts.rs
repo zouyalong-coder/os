@@ -115,8 +115,12 @@ extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFr
 
 /// 键盘中断处理函数。
 extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStackFrame) {
-    // 只会生效一次，因为键盘控制器在我们 获取扫描码 之前，是不会发送下一个中断的。
-    println!("keyboard interrupt!");
+    use x86_64::instructions::port::Port;
+    // 0x60 是键盘控制器的数据端口。需要从这个端口读取扫描码，才能知道用户按下了什么键。键盘中断只是通知我们有键盘输入，但是并不会告诉我们具体是什么键。
+    // 键盘控制器会等我们读取完扫描码之后，才会发送下一个中断。
+    let mut port = Port::new(0x60);
+    let scancode: u8 = unsafe { port.read() };
+    println!("{} pressed", scancode);
     unsafe {
         PICS.lock()
             .notify_end_of_interrupt(InterruptIndex::Keyboard.as_u8());
