@@ -39,11 +39,16 @@ fn run_start() {
 
     // 触发 stack overflow
     // stack_overflow();
-    let ptr = 0xdeadbeaf as *mut u32;
-    unsafe {
-        // 触发 page fault
-        *ptr = 2;
-    }
+    // let ptr = 0xdeadbeaf as *mut u32;
+    // unsafe {
+    //     // 触发 page fault
+    //     *ptr = 2;
+    // }
+    use x86_64::registers::control::Cr3;
+    let (level_4_table, flags) = Cr3::read(); // cr3 寄存器中放的是当前4级（顶级）页表的物理地址
+                                              // 输出可以看到 start_address 是 0x1000
+    println!("Level 4 page table at: {:?}", level_4_table.start_address());
+    println!("flags: {:?}", flags);
 
     println!("here");
 }
