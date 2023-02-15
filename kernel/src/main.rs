@@ -39,6 +39,11 @@ fn run_start() {
 
     // 触发 stack overflow
     // stack_overflow();
+    let ptr = 0xdeadbeaf as *mut u32;
+    unsafe {
+        // 触发 page fault
+        *ptr = 2;
+    }
 
     println!("here");
 }

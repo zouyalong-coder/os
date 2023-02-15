@@ -21,17 +21,18 @@ lazy_static! {
         idt.double_fault.set_handler_fn(double_fault_handler)
             .set_stack_index(gdt::DOUBLE_FAULT_IST_INDEX);
         }
+        idt.page_fault.set_handler_fn(page_fault_handler);
         idt[InterruptIndex::Timer.as_usize()].set_handler_fn(timer_interrupt_handler);
         idt[InterruptIndex::Keyboard.as_usize()].set_handler_fn(keyboard_interrupt_handler);
         idt
     };
 }
 
-use crate::{gdt, print, println};
+use crate::{gdt, hlt_loop, print, println};
 use lazy_static::lazy_static;
 use pic8259::ChainedPics;
 use spin::Mutex;
-use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame};
+use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};
 
 /// 初始化中断描述符表
 pub fn init_idt() {
@@ -149,4 +150,21 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStac
         PICS.lock()
             .notify_end_of_interrupt(InterruptIndex::Keyboard.as_u8());
     }
+}
+
+// todo: 自己实现 x86 的页表
+/// page fault 中断处理函数。
+extern "x86-interrupt" fn page_fault_handler(
+    stack_frame: InterruptStackFrame,
+    error_code: PageFaultErrorCode,
+) {
+    use x86_64::registers::control::Cr2;
+    // 此处能工作的原因：x86强制要求内存模式必须是分页模式，所以在进入内核之前，bootloader 已经将页表激活了。
+    // 除了 vga 外，其它目前使用的地址都是虚拟地址。vga 使用了一致映射，即虚拟地址和物理地址是一样的。
+    println!("EXCEPTION: PAGE FAULT");
+    // 在 page fault 发生时, x86 会自动将出错的地址写入到 CR2 寄存器中。
+    println!("Accessed Address: {:?}", Cr2::read());
+    println!("Error Code: {:?}", error_code);
+    println!("{:#?}", stack_frame);
+    hlt_loop();
 }
