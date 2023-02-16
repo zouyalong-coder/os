@@ -9,6 +9,8 @@
 
 use core::panic::PanicInfo;
 
+use bootloader::entry_point;
+
 pub mod interrupts;
 
 pub mod gdt;
@@ -16,10 +18,20 @@ pub mod qemu;
 pub mod serial;
 pub mod vga_buffer;
 
+// #[cfg(test)]
+// #[no_mangle]
+// pub extern "C" fn _start() -> ! {
+//     init();
+//     test_main();
+//     hlt_loop()
+// }
+
 // cargo test 的入口函数
 #[cfg(test)]
-#[no_mangle]
-pub extern "C" fn _start() -> ! {
+entry_point!(test_kernel_main);
+
+#[cfg(test)]
+fn test_kernel_main(_boot_info: &'static bootloader::BootInfo) -> ! {
     init();
     test_main();
     hlt_loop()

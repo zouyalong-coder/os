@@ -7,29 +7,17 @@
 // 使得测试生成的 main 函数改为 test_main
 #![reexport_test_harness_main = "test_main"] // 重新导出测试框架的入口
 
+use bootloader::{entry_point, BootInfo};
 use core::panic::PanicInfo;
-use kernel::{print, println};
+use kernel::println;
 
-#[no_mangle] // 不重整函数名
-pub extern "C" fn _start() -> ! {
-    // 因为编译器会寻找一个名为 `_start` 的函数，所以这个函数就是入口点
-    // 默认命名为 `_start`
-    #[cfg(test)]
-    test_start();
-    #[cfg(not(test))]
-    run_start();
-
-    kernel::hlt_loop()
-}
-
-#[allow(unused)]
+#[cfg(not(test))]
+entry_point!(kernel_entry); // 指定入口点, 替换 no_mangle extern "C" fn _start(boot_info: &'static BootInfo) -> !
 #[cfg(test)]
-fn test_start() {
-    test_main();
-}
+entry_point!(test_entry);
 
 #[allow(unused)]
-fn run_start() {
+fn kernel_entry(boot_info: &'static BootInfo) -> ! {
     kernel::init();
     // x86_64::instructions::interrupts::int3(); // new
 
@@ -51,6 +39,14 @@ fn run_start() {
     println!("flags: {:?}", flags);
 
     println!("here");
+    kernel::hlt_loop()
+}
+
+#[cfg(test)]
+#[allow(unused)]
+fn test_entry(boot_info: &'static BootInfo) -> ! {
+    test_main();
+    kernel::hlt_loop()
 }
 
 #[panic_handler]

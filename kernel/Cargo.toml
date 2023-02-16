@@ -34,7 +34,7 @@ test-success-exit-code = 33 # 由于我们指定了退出码为 33，所有非0�
 test-timeout = 300          # (in seconds)
 
 [dependencies]
-bootloader = "0.9.23"
+bootloader = { version = "0.9.23", features = ["map_physical_memory"]} # 使用map_physical_memory特性，这样我们就可以在内核中使用物理内存了。
 lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
 pc-keyboard = "0.5.0"
 pic8259 = "0.10.2"
