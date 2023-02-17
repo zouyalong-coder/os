@@ -10,7 +10,7 @@
 use bootloader::{entry_point, BootInfo};
 use core::panic::PanicInfo;
 use kernel::{memory::active_level_4_table, println};
-use x86_64::VirtAddr;
+use x86_64::{structures::paging::PageTable, VirtAddr};
 
 #[cfg(not(test))]
 entry_point!(kernel_entry); // 指定入口点, 替换 no_mangle extern "C" fn _start(boot_info: &'static BootInfo) -> !
@@ -42,7 +42,18 @@ fn kernel_entry(boot_info: &'static BootInfo) -> ! {
     let l4_table = active_level_4_table(boot_info.physical_memory_offset);
     for (i, entry) in l4_table.iter().enumerate() {
         if !entry.is_unused() {
-            println!("L4 Entry[{}]: {:?}", i, entry)
+            println!("L4 Entry[{}]: {:?}", i, entry);
+            let l3_phy = entry.frame().unwrap().start_address();
+            let l3_vir = VirtAddr::new(boot_info.physical_memory_offset + l3_phy.as_u64());
+            let ptr = l3_vir.as_mut_ptr();
+            let l3_table: &PageTable = unsafe { &*ptr };
+
+            // print non-empty entries of the level 3 table
+            for (i, entry) in l3_table.iter().enumerate() {
+                if !entry.is_unused() {
+                    println!("  L3 Entry {}: {:?}", i, entry);
+                }
+            }
         }
     }
     println!("here");
