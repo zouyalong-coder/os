@@ -9,7 +9,10 @@
 
 use bootloader::{entry_point, BootInfo};
 use core::panic::PanicInfo;
-use kernel::{memory::active_level_4_table, println};
+use kernel::{
+    memory::{active_level_4_table, translate_addr},
+    println,
+};
 use x86_64::{structures::paging::PageTable, VirtAddr};
 
 #[cfg(not(test))]
@@ -40,30 +43,56 @@ fn kernel_entry(boot_info: &'static BootInfo) -> ! {
     println!("flags: {:?}", flags);
     // boot_info
     let l4_table = active_level_4_table(boot_info.physical_memory_offset);
-    for (i, entry) in l4_table.iter().enumerate() {
-        if !entry.is_unused() {
-            println!("L4 Entry[{}]: {:?}", i, entry);
-            let l3_phy = entry.frame().unwrap().start_address();
-            let l3_vir = VirtAddr::new(boot_info.physical_memory_offset + l3_phy.as_u64());
-            let ptr = l3_vir.as_mut_ptr();
-            let l3_table: &PageTable = unsafe { &*ptr };
+    // for (i, entry) in l4_table.iter().enumerate() {
+    //     if !entry.is_unused() {
+    //         println!("L4 Entry[{}]: {:?}", i, entry);
+    //         let l3_phy = entry.frame().unwrap().start_address();
+    //         let l3_vir = VirtAddr::new(boot_info.physical_memory_offset + l3_phy.as_u64());
+    //         let ptr = l3_vir.as_mut_ptr();
+    //         let l3_table: &PageTable = unsafe { &*ptr };
 
-            // print non-empty entries of the level 3 table
-            for (i, entry) in l3_table.iter().enumerate() {
-                if !entry.is_unused() {
-                    println!("  L3 Entry {}: {:?}", i, entry);
-                    let l2_phy = entry.frame().unwrap().start_address();
-                    let l2_vir = VirtAddr::new(boot_info.physical_memory_offset + l2_phy.as_u64());
-                    let ptr = l2_vir.as_mut_ptr();
-                    let l2_table: &PageTable = unsafe { &*ptr };
-                    for (i, entry) in l2_table.iter().enumerate() {
-                        if !entry.is_unused() {
-                            println!("      L2 Entry {}: {:?}", i, entry);
-                        }
-                    }
-                }
-            }
-        }
+    //         // print non-empty entries of the level 3 table
+    //         for (i, entry) in l3_table.iter().enumerate() {
+    //             if !entry.is_unused() {
+    //                 println!("  L3 Entry {}: {:?}", i, entry);
+    //                 let l2_phy = entry.frame().unwrap().start_address();
+    //                 let l2_vir = VirtAddr::new(boot_info.physical_memory_offset + l2_phy.as_u64());
+    //                 let ptr = l2_vir.as_mut_ptr();
+    //                 let l2_table: &PageTable = unsafe { &*ptr };
+    //                 for (i, entry) in l2_table.iter().enumerate() {
+    //                     if !entry.is_unused() {
+    //                         println!("      L2 Entry {}: {:?}", i, entry);
+    //                         let l1_phy = entry.frame().unwrap().start_address();
+    //                         let l1_vir =
+    //                             VirtAddr::new(boot_info.physical_memory_offset + l1_phy.as_u64());
+    //                         let ptr = l2_vir.as_mut_ptr();
+    //                         let l1_table: &PageTable = unsafe { &*ptr };
+    //                         for (i, entry) in l1_table.iter().enumerate() {
+    //                             if !entry.is_unused() {
+    //                                 println!("          L1 Entry {}: {:?}", i, entry);
+    //                             }
+    //                         }
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
+    let addresses = [
+        // 一致映射： vga buffer
+        0xb8000,
+        // some code page
+        0x201008,
+        // some stack page
+        0x0100_0020_1a10,
+        // virtual address mapped to physical address 0
+        // 当前还未支持，因为它使用了大页方式来增加效率
+        boot_info.physical_memory_offset,
+    ];
+    for address in addresses {
+        let virt = VirtAddr::new(address);
+        let phy = translate_addr(virt, boot_info.physical_memory_offset);
+        println!("{:?} -> {:?}", virt, phy);
     }
     println!("here");
     kernel::hlt_loop()

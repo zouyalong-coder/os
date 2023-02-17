@@ -1,4 +1,4 @@
-use x86_64::{structures::paging::PageTable, VirtAddr};
+use x86_64::{structures::paging::PageTable, PhysAddr, VirtAddr};
 
 /// 通过当前页表的起始偏移，获取当前进程（或内核）的页表指针（虚拟地址）。
 pub fn active_level_4_table(physical_address_offset: u64) -> &'static mut PageTable {
@@ -14,4 +14,44 @@ pub fn active_level_4_table(physical_address_offset: u64) -> &'static mut PageTa
     // 此时的虚拟地址指向的就是 4级页表的地址。
     let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
     unsafe { &mut *page_table_ptr }
+}
+
+pub fn translate_addr(addr: VirtAddr, phy_addr_offset: u64) -> Option<PhysAddr> {
+    translate_addr_inner(addr, phy_addr_offset)
+}
+
+fn translate_addr_inner(addr: VirtAddr, phy_addr_offset: u64) -> Option<PhysAddr> {
+    use x86_64::registers::control::Cr3;
+    use x86_64::structures::paging::page_table::FrameError;
+
+    // 从 Cr3 读取当前页表的物理地址
+    let (level_4_table_frame, _) = Cr3::read();
+    let table_indexes = [
+        addr.p4_index(),
+        addr.p3_index(),
+        addr.p2_index(),
+        addr.p1_index(),
+    ];
+    let mut frame = level_4_table_frame;
+    for index in table_indexes {
+        // 此时所有页表的虚拟地址=》物理地址的映射方式都是线性的，所以可以直接通过偏移计算出虚拟地址。
+        let virt = VirtAddr::new(phy_addr_offset + frame.start_address().as_u64());
+        let table_ptr: *const PageTable = virt.as_mut_ptr();
+        let table = unsafe { &*table_ptr };
+        let entry = &table[index];
+        // 获取当前 PTE 指向的页帧
+        // PTE 上 12~51 位是页帧的物理地址，共 40 位，指向的是 4KB 的页帧。 对 x86 来说，页大小 12位 + 40 位 = 52 位 地址空间。
+        // x86_64平台仅支持52位物理地址，所以页帧的物理地址最大为 2^52 = 。
+        // x86_64 仅支持48位虚拟地址，所以虚拟地址最大为 2^48 = 256TB（虚拟地址的 offset 是9位）。
+        frame = match entry.frame() {
+            // 正确映射，返回页帧
+            Ok(frame) => frame,
+            // 未映射，返回 None
+            Err(FrameError::FrameNotPresent) => return None,
+            // 大页帧，目前不支持
+            Err(FrameError::HugeFrame) => unimplemented!("huge page is not supported"),
+        };
+    }
+    // 目标页帧的物理地址 + 目标页帧内偏移 = 目标物理地址
+    Some(frame.start_address() + u64::from(addr.page_offset()))
 }
