@@ -9,7 +9,8 @@
 
 use bootloader::{entry_point, BootInfo};
 use core::panic::PanicInfo;
-use kernel::println;
+use kernel::{memory::active_level_4_table, println};
+use x86_64::VirtAddr;
 
 #[cfg(not(test))]
 entry_point!(kernel_entry); // 指定入口点, 替换 no_mangle extern "C" fn _start(boot_info: &'static BootInfo) -> !
@@ -37,7 +38,13 @@ fn kernel_entry(boot_info: &'static BootInfo) -> ! {
                                               // 输出可以看到 start_address 是 0x1000
     println!("Level 4 page table at: {:?}", level_4_table.start_address());
     println!("flags: {:?}", flags);
-
+    // boot_info
+    let l4_table = active_level_4_table(boot_info.physical_memory_offset);
+    for (i, entry) in l4_table.iter().enumerate() {
+        if !entry.is_unused() {
+            println!("L4 Entry[{}]: {:?}", i, entry)
+        }
+    }
     println!("here");
     kernel::hlt_loop()
 }

@@ -9,6 +9,7 @@
 
 use core::panic::PanicInfo;
 
+#[allow(unused)]
 use bootloader::entry_point;
 
 pub mod interrupts;

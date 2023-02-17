@@ -109,7 +109,7 @@ extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFr
         // 要通知 PIC 中断已经处理完毕，否则后续中断会一直排队。
         // notify_end_of_interrupt 会自行判断中断信号发送的源头（主PIC或者副PIC），并使用指令和数据端口将信号发送到目标控制器。当然，如果是要发送到副PIC，那么结果上必然等同于同时发送到两个PIC，因为副PIC的输入管脚连在主PIC上面。
         // 这里的中断编码一定不可以写错，不然可能会导致某个中断信号迟迟得不到回应导致系统整体挂起。这也是该函数被标记为不安全的原因。
-        print!(".");
+        // print!(".");
         PICS.lock()
             .notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
     }
