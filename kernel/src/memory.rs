@@ -1,7 +1,10 @@
-use x86_64::{structures::paging::PageTable, PhysAddr, VirtAddr};
+use x86_64::{
+    structures::paging::{OffsetPageTable, PageTable},
+    PhysAddr, VirtAddr,
+};
 
 /// 通过当前页表的起始偏移，获取当前进程（或内核）的页表指针（虚拟地址）。
-pub fn active_level_4_table(physical_address_offset: u64) -> &'static mut PageTable {
+fn active_level_4_table(physical_address_offset: u64) -> &'static mut PageTable {
     use x86_64::registers::control::Cr3;
     // Cr3 是 x86 存放当前页表地址的寄存器，它的值是当前页表的物理地址
     let (level_4_table_frame, _) = Cr3::read();
@@ -16,7 +19,9 @@ pub fn active_level_4_table(physical_address_offset: u64) -> &'static mut PageTa
     unsafe { &mut *page_table_ptr }
 }
 
-pub fn translate_addr(addr: VirtAddr, phy_addr_offset: u64) -> Option<PhysAddr> {
+#[allow(unused)]
+/// 自己实现的地址转换函数，用于将虚拟地址转换为物理地址。
+fn translate_addr(addr: VirtAddr, phy_addr_offset: u64) -> Option<PhysAddr> {
     translate_addr_inner(addr, phy_addr_offset)
 }
 
@@ -54,4 +59,9 @@ fn translate_addr_inner(addr: VirtAddr, phy_addr_offset: u64) -> Option<PhysAddr
     }
     // 目标页帧的物理地址 + 目标页帧内偏移 = 目标物理地址
     Some(frame.start_address() + u64::from(addr.page_offset()))
+}
+
+pub fn init(phy_addr_offset: u64) -> OffsetPageTable<'static> {
+    let level_4_table = active_level_4_table(phy_addr_offset);
+    unsafe { OffsetPageTable::new(level_4_table, VirtAddr::new(phy_addr_offset)) }
 }

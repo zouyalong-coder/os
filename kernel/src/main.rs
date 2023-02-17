@@ -10,10 +10,13 @@
 use bootloader::{entry_point, BootInfo};
 use core::panic::PanicInfo;
 use kernel::{
-    memory::{active_level_4_table, translate_addr},
+    memory::{self, translate_addr},
     println,
 };
-use x86_64::{structures::paging::PageTable, VirtAddr};
+use x86_64::{
+    structures::paging::{PageTable, Translate},
+    VirtAddr,
+};
 
 #[cfg(not(test))]
 entry_point!(kernel_entry); // 指定入口点, 替换 no_mangle extern "C" fn _start(boot_info: &'static BootInfo) -> !
@@ -41,8 +44,9 @@ fn kernel_entry(boot_info: &'static BootInfo) -> ! {
                                               // 输出可以看到 start_address 是 0x1000
     println!("Level 4 page table at: {:?}", level_4_table.start_address());
     println!("flags: {:?}", flags);
+    let mapper = memory::init(boot_info.physical_memory_offset);
     // boot_info
-    let l4_table = active_level_4_table(boot_info.physical_memory_offset);
+    // let l4_table = active_level_4_table(boot_info.physical_memory_offset);
     // for (i, entry) in l4_table.iter().enumerate() {
     //     if !entry.is_unused() {
     //         println!("L4 Entry[{}]: {:?}", i, entry);
@@ -91,7 +95,8 @@ fn kernel_entry(boot_info: &'static BootInfo) -> ! {
     ];
     for address in addresses {
         let virt = VirtAddr::new(address);
-        let phy = translate_addr(virt, boot_info.physical_memory_offset);
+        let phy = mapper.translate_addr(virt);
+        // let phy = translate_addr(virt, boot_info.physical_memory_offset);
         println!("{:?} -> {:?}", virt, phy);
     }
     println!("here");
