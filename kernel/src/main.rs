@@ -9,12 +9,9 @@
 
 use bootloader::{entry_point, BootInfo};
 use core::panic::PanicInfo;
-use kernel::{
-    memory::{self, translate_addr},
-    println,
-};
+use kernel::{memory, println};
 use x86_64::{
-    structures::paging::{PageTable, Translate},
+    structures::paging::{Page, PageTable, Translate},
     VirtAddr,
 };
 
@@ -44,61 +41,23 @@ fn kernel_entry(boot_info: &'static BootInfo) -> ! {
                                               // 输出可以看到 start_address 是 0x1000
     println!("Level 4 page table at: {:?}", level_4_table.start_address());
     println!("flags: {:?}", flags);
-    let mapper = memory::init(boot_info.physical_memory_offset);
-    // boot_info
-    // let l4_table = active_level_4_table(boot_info.physical_memory_offset);
-    // for (i, entry) in l4_table.iter().enumerate() {
-    //     if !entry.is_unused() {
-    //         println!("L4 Entry[{}]: {:?}", i, entry);
-    //         let l3_phy = entry.frame().unwrap().start_address();
-    //         let l3_vir = VirtAddr::new(boot_info.physical_memory_offset + l3_phy.as_u64());
-    //         let ptr = l3_vir.as_mut_ptr();
-    //         let l3_table: &PageTable = unsafe { &*ptr };
+    let mut mapper = memory::init(boot_info.physical_memory_offset);
+    let mut frame_allocator = memory::EmptyFrameAllocator;
+    // 虚拟地址 0 是 bootloader 肯定不会映射的地址，它会用来判断空指针。所以这里使用这个虚拟地址来测试。
+    // 因为我们使用的是 EmptyFrameAllocator，不会真的分配物理帧，而 bootloader 已经映射了一个 1MB 的空间，所以复用 0 不会产生分配。
+    let page = Page::containing_address(VirtAddr::new(0));
+    memory::create_example_mapping(page, &mut mapper, &mut frame_allocator);
 
-    //         // print non-empty entries of the level 3 table
-    //         for (i, entry) in l3_table.iter().enumerate() {
-    //             if !entry.is_unused() {
-    //                 println!("  L3 Entry {}: {:?}", i, entry);
-    //                 let l2_phy = entry.frame().unwrap().start_address();
-    //                 let l2_vir = VirtAddr::new(boot_info.physical_memory_offset + l2_phy.as_u64());
-    //                 let ptr = l2_vir.as_mut_ptr();
-    //                 let l2_table: &PageTable = unsafe { &*ptr };
-    //                 for (i, entry) in l2_table.iter().enumerate() {
-    //                     if !entry.is_unused() {
-    //                         println!("      L2 Entry {}: {:?}", i, entry);
-    //                         let l1_phy = entry.frame().unwrap().start_address();
-    //                         let l1_vir =
-    //                             VirtAddr::new(boot_info.physical_memory_offset + l1_phy.as_u64());
-    //                         let ptr = l2_vir.as_mut_ptr();
-    //                         let l1_table: &PageTable = unsafe { &*ptr };
-    //                         for (i, entry) in l1_table.iter().enumerate() {
-    //                             if !entry.is_unused() {
-    //                                 println!("          L1 Entry {}: {:?}", i, entry);
-    //                             }
-    //                         }
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
-    let addresses = [
-        // 一致映射： vga buffer
-        0xb8000,
-        // some code page
-        0x201008,
-        // some stack page
-        0x0100_0020_1a10,
-        // virtual address mapped to physical address 0
-        // 当前还未支持，因为它使用了大页方式来增加效率
-        boot_info.physical_memory_offset,
-    ];
-    for address in addresses {
-        let virt = VirtAddr::new(address);
-        let phy = mapper.translate_addr(virt);
-        // let phy = translate_addr(virt, boot_info.physical_memory_offset);
-        println!("{:?} -> {:?}", virt, phy);
-    }
+    let page_ptr: *mut u64 = page.start_address().as_mut_ptr();
+    unsafe {
+        page_ptr
+            .offset(400) // vga 的400 偏移处
+            .write_volatile(0x_f021_f077_f065_f04e) // “New!”
+    };
+    // 测试需要分配新页的情况, 此时会 panic，因为 EmptyFrameAllocator 不能分配新页
+    // 此地址的 L1 页表项不存在，所以会触发 page fault
+    let page = Page::containing_address(VirtAddr::new(0xdeadbeaf000));
+    memory::create_example_mapping(page, &mut mapper, &mut frame_allocator);
     println!("here");
     kernel::hlt_loop()
 }
