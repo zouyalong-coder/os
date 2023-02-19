@@ -94,3 +94,45 @@ pub fn create_example_mapping(
     };
     map_to_result.expect("map_to failed").flush();
 }
+
+use bootloader::bootinfo::{MemoryMap, MemoryRegionType};
+
+/// 用于分配物理内存的 FrameAllocator
+
+pub struct BootInfoFrameAllocator {
+    /// 内存映射表, 用于记录内存的起始地址和大小，以及类型。由bootloader(BIOS/UEFI)提供
+    /// MemoryMap 是一个 MemoryRegion 的数组，每个 MemoryRegion 代表一段内存。
+    memory_map: &'static MemoryMap,
+    /// 下一个可用的内存区域
+    next: usize,
+}
+
+impl BootInfoFrameAllocator {
+    /// 创建一个新的 FrameAllocator.
+    /// unsafe 的意义是：memory_map 由调用者提供，必须保证其有效性。
+    pub unsafe fn init(memory_map: &'static MemoryMap) -> Self {
+        Self {
+            memory_map,
+            next: 0,
+        }
+    }
+
+    fn usable_frames(&self) -> impl Iterator<Item = PhysFrame> {
+        self.memory_map
+            .iter()
+            .filter(|r| r.region_type == MemoryRegionType::Usable)
+            .map(|r| r.range.start_addr()..r.range.end_addr()) // 转换为 byte_range
+            .flat_map(|r| r.step_by(4096)) // step_by 将iter按步长跳过，这里是按4KB跳过。flat_map 将多个iter合并为一个iter
+            .map(|addr| PhysFrame::containing_address(PhysAddr::new(addr))) // 每4K是一个frame
+    }
+}
+
+unsafe impl FrameAllocator<Size4KiB> for BootInfoFrameAllocator {
+    fn allocate_frame(&mut self) -> Option<PhysFrame> {
+        // 此方法每次都会生成新的迭代器，不是很高效。更好的方案应该是在初始化时就生成好迭代器，然后在此方法中使用迭代器的 next 方法。
+        // 但是由于 rust 还不支持 struct 属性类型为 impl Trait，所以只能这样写了，除非 named existential types（https://github.com/rust-lang/rfcs/pull/2071） 被 rust 实现。
+        let frame = self.usable_frames().nth(self.next);
+        self.next += 1;
+        frame
+    }
+}
