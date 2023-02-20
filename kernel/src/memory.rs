@@ -76,25 +76,6 @@ unsafe impl FrameAllocator<Size4KiB> for EmptyFrameAllocator {
     }
 }
 
-/// 用于测试的函数
-pub fn create_example_mapping(
-    page: Page,
-    mapper: &mut OffsetPageTable,
-    frame_allocator: &mut impl FrameAllocator<Size4KiB>,
-) {
-    use x86_64::structures::paging::PageTableFlags;
-
-    let frame = PhysFrame::containing_address(PhysAddr::new(0xb8000));
-    let flag = PageTableFlags::PRESENT | PageTableFlags::WRITABLE;
-
-    let map_to_result = unsafe {
-        // 仅用于测试，map_to 的页表项必须是未映射的
-        // frame 未vga所在的页帧，这里不同的page可能会触发中间页表的分配，所以这里需要传入frame_allocator
-        mapper.map_to(page, frame, flag, frame_allocator)
-    };
-    map_to_result.expect("map_to failed").flush();
-}
-
 use bootloader::bootinfo::{MemoryMap, MemoryRegionType};
 
 /// 用于分配物理内存的 FrameAllocator

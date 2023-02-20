@@ -7,6 +7,9 @@
 // 使得测试生成的 main 函数改为 test_main
 #![reexport_test_harness_main = "test_main"] // 重新导出测试框架的入口
 
+extern crate alloc;
+
+use alloc::boxed::Box;
 use bootloader::{entry_point, BootInfo};
 use core::panic::PanicInfo;
 use kernel::{memory, println};
@@ -57,14 +60,15 @@ fn kernel_entry(boot_info: &'static BootInfo) -> ! {
     // };
     // 测试需要分配新页的情况, 此时会 panic，因为 EmptyFrameAllocator 不能分配新页
     // 此地址的 L1 页表项不存在，所以会触发 page fault
-    let page = Page::containing_address(VirtAddr::new(0xdeadbeaf000));
-    memory::create_example_mapping(page, &mut mapper, &mut frame_allocator);
-    let page_ptr: *mut u64 = page.start_address().as_mut_ptr();
-    unsafe {
-        page_ptr
-            .offset(400) // vga 的400 偏移处
-            .write_volatile(0x_f021_f077_f065_f04e) // “New!”
-    };
+    // let page = Page::containing_address(VirtAddr::new(0xdeadbeaf000));
+
+    // let page_ptr: *mut u64 = page.start_address().as_mut_ptr();
+    // unsafe {
+    //     page_ptr
+    //         .offset(400) // vga 的400 偏移处
+    //         .write_volatile(0x_f021_f077_f065_f04e) // “New!”
+    // };
+    let x = Box::new(1);
     println!("here");
     kernel::hlt_loop()
 }

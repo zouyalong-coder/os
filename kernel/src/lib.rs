@@ -6,6 +6,7 @@
 // 测试函数生成的 main 函数改为 test_main
 #![reexport_test_harness_main = "test_main"] // 测试框架入口设置为 test_main
 #![feature(abi_x86_interrupt)] // 开启 x86 中断
+#![feature(alloc_error_handler)] // 开启 alloc_error_handler
 
 use core::panic::PanicInfo;
 
@@ -19,6 +20,11 @@ pub mod memory;
 pub mod qemu;
 pub mod serial;
 pub mod vga_buffer;
+// alloc 是标准库的一部分，所以不应该在 Cargo.toml 中添加依赖
+// 但是由于我们是在为一个自定义的目标进行编译，所以不能直接使用标准库中的alloc，所以需要使用 extern crate 语法。（以前所有的依赖都需要 extern crate，现在只在这种情况下需要。）
+// extern crate 会使得 Rust 编译器重新编译 alloc。
+extern crate alloc;
+pub mod allocator;
 
 // #[cfg(test)]
 // #[no_mangle]
