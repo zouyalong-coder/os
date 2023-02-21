@@ -9,10 +9,10 @@
 
 extern crate alloc;
 
-use alloc::boxed::Box;
+use alloc::{boxed::Box, rc::Rc, vec, vec::Vec};
 use bootloader::{entry_point, BootInfo};
 use core::panic::PanicInfo;
-use kernel::{memory, println};
+use kernel::{allocator, memory, println};
 use x86_64::{
     structures::paging::{Page, PageTable, Translate},
     VirtAddr,
@@ -47,28 +47,31 @@ fn kernel_entry(boot_info: &'static BootInfo) -> ! {
     let mut mapper = memory::init(boot_info.physical_memory_offset);
     let mut frame_allocator =
         unsafe { memory::BootInfoFrameAllocator::init(&boot_info.memory_map) };
-    // 虚拟地址 0 是 bootloader 肯定不会映射的地址，它会用来判断空指针。所以这里使用这个虚拟地址来测试。
-    // 因为我们使用的是 EmptyFrameAllocator，不会真的分配物理帧，而 bootloader 已经映射了一个 1MB 的空间，所以复用 0 不会产生分配。
-    // let page = Page::containing_address(VirtAddr::new(0));
-    // memory::create_example_mapping(page, &mut mapper, &mut frame_allocator);
-
-    // let page_ptr: *mut u64 = page.start_address().as_mut_ptr();
-    // unsafe {
-    //     page_ptr
-    //         .offset(400) // vga 的400 偏移处
-    //         .write_volatile(0x_f021_f077_f065_f04e) // “New!”
-    // };
-    // 测试需要分配新页的情况, 此时会 panic，因为 EmptyFrameAllocator 不能分配新页
-    // 此地址的 L1 页表项不存在，所以会触发 page fault
-    // let page = Page::containing_address(VirtAddr::new(0xdeadbeaf000));
-
-    // let page_ptr: *mut u64 = page.start_address().as_mut_ptr();
-    // unsafe {
-    //     page_ptr
-    //         .offset(400) // vga 的400 偏移处
-    //         .write_volatile(0x_f021_f077_f065_f04e) // “New!”
-    // };
+    allocator::init_heap(&mut mapper, &mut frame_allocator);
     let x = Box::new(1);
+    println!("x: {} @ {:p}", x, x);
+
+    // create a dynamically sized vector
+    let mut vec = Vec::new();
+    for i in 0..500 {
+        vec.push(i);
+    }
+    println!("vec at {:p}", vec.as_slice());
+
+    // create a reference counted vector -> will be freed when count reaches 0
+    let reference_counted = Rc::new(vec![1, 2, 3]);
+    let cloned_reference = reference_counted.clone();
+    println!(
+        "current reference count is {} @ {:p}",
+        Rc::strong_count(&cloned_reference),
+        reference_counted
+    );
+    core::mem::drop(reference_counted);
+    println!(
+        "reference count is {} now @ {:p}",
+        Rc::strong_count(&cloned_reference),
+        cloned_reference
+    );
     println!("here");
     kernel::hlt_loop()
 }
