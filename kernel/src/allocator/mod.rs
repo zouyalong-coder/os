@@ -1,17 +1,16 @@
 mod bump;
-
-pub use bump::*;
+mod linked_list;
 
 use core::alloc::GlobalAlloc;
 
-use linked_list_allocator::LockedHeap;
 use x86_64::{
-    structures::paging::{
-        mapper::MapToError, page_table::PageTableEntry, FrameAllocator, Mapper, PageTableFlags,
-        Size4KiB,
-    },
+    structures::paging::{mapper::MapToError, FrameAllocator, Mapper, PageTableFlags, Size4KiB},
     VirtAddr,
 };
+
+use bump::BumpAllocator;
+
+use self::linked_list::LinkedListAllocator;
 
 /// 测试接口。
 pub struct Dummy;
@@ -32,7 +31,8 @@ unsafe impl GlobalAlloc for Dummy {
 #[global_allocator]
 // static ALLOCATOR: Dummy = Dummy;
 // static ALLOCATOR: LockedHeap = LockedHeap::empty();
-static ALLOCATOR: Locked<BumpAllocator> = Locked::new(BumpAllocator::new());
+// static ALLOCATOR: Locked<BumpAllocator> = Locked::new(BumpAllocator::new());
+static ALLOCATOR: Locked<LinkedListAllocator> = Locked::new(LinkedListAllocator::new());
 
 /// #[alloc_error_handler] 用于处理 alloc crate 的分配失败，当使用 extern crate alloc 时，必须由用户提供一个 alloc_error_handler。参数 layout 是传入 alloc 的 layout。
 #[alloc_error_handler]
