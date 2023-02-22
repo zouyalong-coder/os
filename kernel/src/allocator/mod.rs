@@ -1,3 +1,7 @@
+mod bump;
+
+pub use bump::*;
+
 use core::alloc::GlobalAlloc;
 
 use linked_list_allocator::LockedHeap;
