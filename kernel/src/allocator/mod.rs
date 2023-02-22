@@ -31,7 +31,8 @@ unsafe impl GlobalAlloc for Dummy {
 /// #[global_allocator] 提供给 alloc crate 一个全局的堆分配器。当指定 extern crate alloc 时，必须由用户提供一个全局的堆分配器。
 #[global_allocator]
 // static ALLOCATOR: Dummy = Dummy;
-static ALLOCATOR: LockedHeap = LockedHeap::empty();
+// static ALLOCATOR: LockedHeap = LockedHeap::empty();
+static ALLOCATOR: Locked<BumpAllocator> = Locked::new(BumpAllocator::new());
 
 /// #[alloc_error_handler] 用于处理 alloc crate 的分配失败，当使用 extern crate alloc 时，必须由用户提供一个 alloc_error_handler。参数 layout 是传入 alloc 的 layout。
 #[alloc_error_handler]
@@ -73,4 +74,24 @@ pub fn init_heap(
             .init(HEAP_START, HEAP_SIZE); // 指定堆的起始地址和大小。堆是向上增长的。
     }
     Ok(())
+}
+
+pub struct Locked<T> {
+    inner: spin::Mutex<T>,
+}
+
+impl<T> Locked<T> {
+    pub const fn new(inner: T) -> Self {
+        Self {
+            inner: spin::Mutex::new(inner),
+        }
+    }
+
+    pub fn lock(&self) -> spin::MutexGuard<T> {
+        self.inner.lock()
+    }
+}
+
+pub fn align_up(addr: usize, align: usize) -> usize {
+    (addr + align - 1) & !(align - 1)
 }
