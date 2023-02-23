@@ -9,6 +9,9 @@ build-std-features = ["compiler-builtins-mem"]
 [build]
 # 避免每次传入 --target 参数
 target = "targets/x86_64-myos.json"
+rustflags=[
+    "--cfg", 'allocator="linked_list"',
+]
 
 # 更方便在 QEMU 中运行, target_os=none 包含 myos
 [target.'cfg(target_os = "none")']

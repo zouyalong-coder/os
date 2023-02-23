@@ -1,3 +1,9 @@
+//! LinkedListAllocator：利用单链表维护可用内存块。
+//! 优点：
+//! 1. 通用的内存分配管理器。
+//! 2. 分配大小与请求一样，不会浪费内存。
+//! 缺点：
+//! 1. 慢。需要遍历链表
 use core::alloc::{GlobalAlloc, Layout};
 
 use super::{align_up, Locked};
@@ -53,13 +59,34 @@ impl LinkedListAllocator {
         // 空闲内存必须至少能装下一个 ListNode header。
         assert!(size >= core::mem::size_of::<ListNode>());
 
-        // 注意：这个是分配在栈上的。只有 Box::new 才会分配在堆上。
-        let mut new_node = ListNode::new(size);
-        new_node.next = self.head.next.take();
-        let node_ptr = addr as *mut ListNode;
-        // 将 new_node 写入 node_ptr 指向的内存, 其实就是 copy
-        node_ptr.write(new_node);
-        self.head.next = Some(&mut *node_ptr);
+        let mut current = &mut self.head;
+        while let Some(ref mut region) = current.next {
+            if region.start_addr() > addr {
+                break;
+            }
+            current = current.next.as_mut().unwrap();
+        }
+
+        if addr == current.end_addr() {
+            // 如果新的内存块紧邻 current，就合并。
+            current.size += size;
+        } else {
+            // 否则，插入到 current 和 current.next 之间。
+            let mut new_node = ListNode::new(size);
+            new_node.next = current.next.take();
+            let node_ptr = addr as *mut ListNode;
+            // 将 new_node 写入 node_ptr 指向的内存, 其实就是 copy
+            node_ptr.write(new_node);
+            current.next = Some(&mut *node_ptr);
+            current = current.next.as_mut().unwrap();
+        }
+        if let Some(ref mut next) = current.next {
+            if addr + size == next.start_addr() {
+                // 如果新的内存块紧邻 current.next，就合并。
+                current.size += next.size;
+                current.next = next.next.take();
+            }
+        }
     }
 
     /// 从头部开始查找第一个能够满足 size 和 align 的内存块。
@@ -103,20 +130,51 @@ impl LinkedListAllocator {
         let size = layout.size().max(core::mem::size_of::<ListNode>());
         (size, layout.align())
     }
+
+    fn empty_region(&self) -> RegionIterator<'_> {
+        RegionIterator {
+            current: &self.head,
+        }
+    }
+
+    pub fn alloc_by_layout(&mut self, layout: Layout) -> Option<usize> {
+        let (size, align) = LinkedListAllocator::size_align(layout);
+        self.find_region(size, align).map(|(region, alloc_start)| {
+            let alloc_end = alloc_start.checked_add(size).expect("overflow");
+            let excess_size = region.end_addr() - alloc_end;
+            if excess_size > 0 {
+                unsafe {
+                    // 分割成两个内存块
+                    self.add_free_region(alloc_end, excess_size);
+                }
+            }
+            alloc_start
+        })
+    }
+}
+
+struct RegionIterator<'a> {
+    current: &'a ListNode,
+}
+
+impl<'a> Iterator for RegionIterator<'a> {
+    type Item = &'a ListNode;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(ref next) = self.current.next {
+            self.current = next;
+            Some(next)
+        } else {
+            None
+        }
+    }
 }
 
 unsafe impl GlobalAlloc for Locked<LinkedListAllocator> {
     unsafe fn alloc(&self, layout: core::alloc::Layout) -> *mut u8 {
-        let (size, align) = LinkedListAllocator::size_align(layout);
         let mut allocator = self.lock();
-        if let Some((region, alloc_start)) = allocator.find_region(size, align) {
-            let alloc_end = alloc_start.checked_add(size).expect("overflow");
-            let excess_size = region.end_addr() - alloc_end;
-            if excess_size > 0 {
-                // 分割成两个内存块
-                allocator.add_free_region(alloc_end, excess_size);
-            }
-            alloc_start as _
+        if let Some(addr) = allocator.alloc_by_layout(layout) {
+            addr as _
         } else {
             core::ptr::null_mut()
         }

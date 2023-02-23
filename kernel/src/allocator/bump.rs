@@ -1,3 +1,4 @@
+//! BumpAllocator：只简单记录分配次数，并在分配次数减少到0（dealloc 会使技术减一）前，内存不进行复用。
 use core::alloc::GlobalAlloc;
 
 use super::{align_up, Locked};
