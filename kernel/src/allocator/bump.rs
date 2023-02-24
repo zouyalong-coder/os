@@ -32,6 +32,7 @@ impl BumpAllocator {
     }
 }
 
+// GlobalAlloc特性定义了一个堆分配器必须提供的功能。该trait很特别，因为程序员几乎从不直接使用它。相反，编译器会在使用alloc的分配和集合类型时自动插入对该trait方法的适当调用。
 unsafe impl GlobalAlloc for Locked<BumpAllocator> {
     // &self 的原因：GlobalAllocator 是通过 #[global_allocator] 属性指定的，而这个属性只能是 static 的，而 static 是不可变的（可变的话就无法共享了）。因此，我们只能使用 &self。
     unsafe fn alloc(&self, layout: core::alloc::Layout) -> *mut u8 {

@@ -1,4 +1,0 @@
-[build]
-rustflags=[
-    "--cfg", 'allocator="linked_list"',
-]

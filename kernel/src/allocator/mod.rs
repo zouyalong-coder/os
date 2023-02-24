@@ -1,17 +1,13 @@
 mod bump;
+pub mod fixed_size;
 mod linked_list;
 
 use core::alloc::GlobalAlloc;
 
-use linked_list_allocator::LockedHeap;
 use x86_64::{
     structures::paging::{mapper::MapToError, FrameAllocator, Mapper, PageTableFlags, Size4KiB},
     VirtAddr,
 };
-
-use bump::BumpAllocator;
-
-use self::linked_list::LinkedListAllocator;
 
 /// 测试接口。
 pub struct Dummy;
@@ -28,13 +24,30 @@ unsafe impl GlobalAlloc for Dummy {
     }
 }
 
-/// #[global_allocator] 提供给 alloc crate 一个全局的堆分配器。当指定 extern crate alloc 时，必须由用户提供一个全局的堆分配器。
+// #[global_allocator] 提供给 alloc crate 一个全局的堆分配器。当指定 extern crate alloc 时，必须由用户提供一个全局的堆分配器。
+// cfg_if::cfg_if! {
+//     if #[cfg(allocator = "bump")] {
+//         #[global_allocator]
+//         static ALLOCATOR: Locked<BumpAllocator> = Locked::new(BumpAllocator::new());
+//     } else if #[cfg(allocator = "linked_list")] {
+//         #[global_allocator]
+//         static ALLOCATOR: Locked<LinkedListAllocator> = Locked::new(LinkedListAllocator::new());
+//     } else {
+//         #[global_allocator]
+//         static ALLOCATOR: Locked<FixedSizeBlockAllocator> = Locked::new(FixedSizeBlockAllocator::new());
+//     }
+// }
 #[cfg(allocator = "bump")]
 #[global_allocator]
-static ALLOCATOR: Locked<BumpAllocator> = Locked::new(BumpAllocator::new());
+static ALLOCATOR: Locked<bump::BumpAllocator> = Locked::new(bump::BumpAllocator::new());
 #[cfg(allocator = "linked_list")]
 #[global_allocator]
-static ALLOCATOR: Locked<LinkedListAllocator> = Locked::new(LinkedListAllocator::new());
+static ALLOCATOR: Locked<linked_list::LinkedListAllocator> =
+    Locked::new(linked_list::LinkedListAllocator::new());
+#[cfg(all(not(allocator = "linked_list"), not(allocator = "bump")))]
+#[global_allocator]
+static ALLOCATOR: Locked<fixed_size::FixedSizeBlockAllocator> =
+    Locked::new(fixed_size::FixedSizeBlockAllocator::new());
 
 /// #[alloc_error_handler] 用于处理 alloc crate 的分配失败，当使用 extern crate alloc 时，必须由用户提供一个 alloc_error_handler。参数 layout 是传入 alloc 的 layout。
 #[alloc_error_handler]

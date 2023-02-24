@@ -6,8 +6,8 @@
 // 测试函数生成的 main 函数改为 test_main
 #![reexport_test_harness_main = "test_main"] // 测试框架入口设置为 test_main
 #![feature(abi_x86_interrupt)] // 开启 x86 中断
-#![feature(alloc_error_handler)]
 // 开启 alloc_error_handler
+#![feature(alloc_error_handler)]
 // mutable references are not allowed in constant functions
 // any use of mutable references in const functions (including setting the next field to None) is still unstable.
 #![feature(const_mut_refs)]

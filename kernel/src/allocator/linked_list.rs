@@ -131,12 +131,6 @@ impl LinkedListAllocator {
         (size, layout.align())
     }
 
-    fn empty_region(&self) -> RegionIterator<'_> {
-        RegionIterator {
-            current: &self.head,
-        }
-    }
-
     pub fn alloc_by_layout(&mut self, layout: Layout) -> Option<usize> {
         let (size, align) = LinkedListAllocator::size_align(layout);
         self.find_region(size, align).map(|(region, alloc_start)| {
@@ -150,23 +144,6 @@ impl LinkedListAllocator {
             }
             alloc_start
         })
-    }
-}
-
-struct RegionIterator<'a> {
-    current: &'a ListNode,
-}
-
-impl<'a> Iterator for RegionIterator<'a> {
-    type Item = &'a ListNode;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if let Some(ref next) = self.current.next {
-            self.current = next;
-            Some(next)
-        } else {
-            None
-        }
     }
 }
 
