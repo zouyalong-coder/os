@@ -76,8 +76,6 @@ unsafe impl FrameAllocator<Size4KiB> for EmptyFrameAllocator {
 
 use bootloader::bootinfo::{MemoryMap, MemoryRegionType};
 
-use crate::task::keyboard::ScanCodeStream;
-
 /// 用于分配物理内存的 FrameAllocator
 
 pub struct BootInfoFrameAllocator {
