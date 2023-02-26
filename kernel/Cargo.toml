@@ -45,3 +45,13 @@ uart_16550 = { version = "0.2.0", features = ["nightly"] }
 volatile = "0.2.6"
 x86_64 = "0.14.10"
 linked_list_allocator = "0.9.0"
+futures-util = { version = "0.3.26", default-features=false, features = ["alloc"] }
+
+[dependencies.crossbeam-queue] # 无锁队列
+version = "0.2.1"
+default-features = false # 去除std依赖
+features = ["alloc"]
+
+[dependencies.conquer-once]
+version = "0.2.0"
+default-features = false

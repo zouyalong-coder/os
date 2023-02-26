@@ -28,6 +28,7 @@ pub mod vga_buffer;
 // extern crate 会使得 Rust 编译器重新编译 alloc。
 extern crate alloc;
 pub mod allocator;
+pub mod task;
 
 // #[cfg(test)]
 // #[no_mangle]
