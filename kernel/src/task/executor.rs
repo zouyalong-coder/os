@@ -62,6 +62,14 @@ impl Executor {
         loop {
             // 这里依然是忙等的方法
             self.run_ready_tasks();
+            self.sleep_if_idle();
+        }
+    }
+
+    fn sleep_if_idle(&self) {
+        if self.task_queue.is_empty() {
+            // 这中间可能有键盘中断进入，这会导致该中断的响应要下一个键盘输入才被处理
+            x86_64::instructions::hlt();
         }
     }
 
