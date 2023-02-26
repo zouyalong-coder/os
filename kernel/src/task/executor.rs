@@ -67,9 +67,13 @@ impl Executor {
     }
 
     fn sleep_if_idle(&self) {
+        use x86_64::instructions::interrupts::{disable, enable, enable_and_hlt};
+        // 关闭中断
+        disable();
         if self.task_queue.is_empty() {
-            // 这中间可能有键盘中断进入，这会导致该中断的响应要下一个键盘输入才被处理
-            x86_64::instructions::hlt();
+            enable_and_hlt(); // 开启中断并hlt
+        } else {
+            enable();
         }
     }
 
