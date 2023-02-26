@@ -28,7 +28,7 @@ lazy_static! {
     };
 }
 
-use crate::{gdt, hlt_loop, print, println};
+use crate::{gdt, hlt_loop, println, task::keyboard::add_scan_code};
 use lazy_static::lazy_static;
 use pic8259::ChainedPics;
 use spin::Mutex;
@@ -117,35 +117,16 @@ extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFr
 
 /// 键盘中断处理函数。
 extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStackFrame) {
-    use pc_keyboard::{layouts, DecodedKey, HandleControl, Keyboard, ScancodeSet1};
     use x86_64::instructions::port::Port;
-
-    lazy_static! {
-        static ref KEYBOARD: Mutex<Keyboard<layouts::Us104Key, ScancodeSet1>> = Mutex::new(
-            Keyboard::new(layouts::Us104Key, // 默认美式键盘布局
-                ScancodeSet1,
-                HandleControl::Ignore // 使 Ctrl 键不会影响输入
-            )
-        );
-    }
 
     // 0x60 是键盘控制器的数据端口。需要从这个端口读取扫描码，才能知道用户按下了什么键。键盘中断只是通知我们有键盘输入，但是并不会告诉我们具体是什么键。
     // 键盘控制器会等我们读取完扫描码之后，才会发送下一个中断。
     let mut port = Port::new(0x60);
-    let mut keyboard = KEYBOARD.lock();
-    let scancode: u8 = unsafe { port.read() };
+    // let mut keyboard = KEYBOARD.lock();
+    let scan_code: u8 = unsafe { port.read() };
+    add_scan_code(scan_code);
 
-    // KeyEvent 包括了触发本次中断的按键信息，以及子动作是按下还是释放。
-    if let Ok(Some(key_event)) = keyboard.add_byte(scancode) {
-        // process_keyevent 的作用是将按键转换为人类可读的字符，比如shift 同时按下时将按键 a 转换为字符 'A'。
-        if let Some(key) = keyboard.process_keyevent(key_event) {
-            match key {
-                DecodedKey::Unicode(character) => print!("{}", character),
-                DecodedKey::RawKey(key) => print!("{:?}", key),
-            }
-        }
-    }
-
+    // 通知 PIC 中断已经处理完毕。否则后续中断会一直排队。
     unsafe {
         PICS.lock()
             .notify_end_of_interrupt(InterruptIndex::Keyboard.as_u8());

@@ -12,7 +12,10 @@ extern crate alloc;
 use alloc::{boxed::Box, rc::Rc, vec, vec::Vec};
 use bootloader::{entry_point, BootInfo};
 use core::panic::PanicInfo;
-use kernel::{allocator, memory, println};
+use kernel::{
+    allocator, memory, println,
+    task::{keyboard, simple_executor::SimpleExecutor, Task},
+};
 use x86_64::{
     structures::paging::{Page, PageTable, Translate},
     VirtAddr,
@@ -72,6 +75,10 @@ fn kernel_entry(boot_info: &'static BootInfo) -> ! {
         Rc::strong_count(&cloned_reference),
         cloned_reference
     );
+    let mut executor = SimpleExecutor::new();
+    executor.spawn(Task::new(example_task()));
+    executor.spawn(Task::new(keyboard::print_keypress()));
+    executor.run();
     println!("here");
     kernel::hlt_loop()
 }
@@ -94,19 +101,11 @@ fn panic(info: &PanicInfo) -> ! {
     }
 }
 
-#[test_case]
-fn trivial_assertion() {
-    // serial_println!("trivial assertion... ");
-    assert_eq!(1, 1);
-    // serial_println!("[ok]");
+async fn async_num() -> u32 {
+    42
 }
 
-#[cfg(test)]
-mod tests {
-
-    #[test_case]
-    fn it_works() {
-        // serial_println!("it works... ");
-        assert_eq!(2 + 2, 4);
-    }
+async fn example_task() {
+    let number = async_num().await;
+    println!("async number: {}", number);
 }
