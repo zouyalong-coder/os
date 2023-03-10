@@ -21,6 +21,11 @@ harness = false
 name = "stack_overflow"
 harness = false
 
+[package.metadata.bootloader]
+# 映射完整物理内存，设置物理内存的虚拟地址偏移量为 0x0000f00000000000
+# 逻辑地址（虚拟）= physical_memory_offset + 物理地址
+physical-memory-offset = "0x0000f00000000000"
+
 # bootimage runner 会在QEMU的默认测试命令后添加 test-args 参数。（对于 cargo run 命令，这个参数会被忽略。）
 #在传递设备名 (isa-debug-exit)的同时，我们还传递了两个参数，iobase 和 iosize 。这两个参数指定了一个_I/O 端口_，我们的内核将通过它来访问设备。
 # 具体配置参考：https://github.com/rust-osdev/bootimage/blob/master/Readme.md
@@ -55,3 +60,7 @@ features = ["alloc"]
 [dependencies.conquer-once]
 version = "0.2.0"
 default-features = false
+
+[build-dependencies]
+build-target = "0.4.0"
+

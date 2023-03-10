@@ -11,5 +11,10 @@
     "pre-link-args": [
         "-m64"
     ],
+    "pre-link-args": {
+        "ld.lld": [
+            "-Tkernel/src/arch/x86/linker.ld"
+        ]
+    },
     "morestack": false
 }
