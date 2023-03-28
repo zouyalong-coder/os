@@ -89,8 +89,10 @@ pub static PICS: Mutex<ChainedPics> =
 
 #[repr(u8)]
 pub enum InterruptIndex {
-    Timer = PIC_1_OFFSET, // Timer 在 master 的第0个引脚，所以中断号为 32
-    Keyboard,             // Keyboard 在 master 的第1个引脚，所以中断号为 33
+    Timer = PIC_1_OFFSET, // Timer 在 master 的第0个引脚，所以中断号为 32(0x20)
+    Keyboard,             // Keyboard 在 master 的第1个引脚，所以中断号为 33(0x21)
+    HardDisk = PIC_2_OFFSET + 6, // HardDisk 在 slave 的第6个引脚，所以中断号为 46(0x2E)
+    SystemCall = 0x80,    // SystemCall 中断号为 0x80
 }
 
 impl InterruptIndex {
