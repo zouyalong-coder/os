@@ -18,9 +18,11 @@ use bootloader::entry_point;
 
 pub mod interrupts;
 
+pub mod arch;
 pub mod gdt;
 pub mod memory;
 pub mod qemu;
+pub mod sched;
 pub mod serial;
 pub mod vga_buffer;
 // alloc 是标准库的一部分，所以不应该在 Cargo.toml 中添加依赖
